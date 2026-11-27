@@ -1,8 +1,7 @@
-name: Build APK
+name: Build Bluetooth Widget
 
 on:
   push:
-    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -15,36 +14,39 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Descompactar o projeto
-        run: unzip -q BudsWidget.zip -d _src
+        run: |
+          mkdir -p _src
+          unzip -q BluetoothWidget.zip -d _src
+          PROJ=$(dirname "$(find _src -name settings.gradle.kts | head -n 1)")
+          echo "PROJ=$PROJ" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.7"
+          gradle-version: 8.7
 
-      - name: Compilar o APK
-        working-directory: _src/BudsWidget
+      - name: Compilar
+        working-directory: ${{ env.PROJ }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Renomear o APK
-        run: cp _src/BudsWidget/app/build/outputs/apk/debug/app-debug.apk BudsWidget.apk
+      - name: Copiar APK
+        run: cp "$PROJ/app/build/outputs/apk/debug/app-debug.apk" BluetoothWidget.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BudsWidget-apk
-          path: BudsWidget.apk
+          name: BluetoothWidget
+          path: BluetoothWidget.apk
 
-      - name: Publicar em Releases
+      - name: Publicar na aba Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest BudsWidget.apk \
-            --title "Buds Widget (APK mais recente)" \
-            --notes "APK gerado automaticamente a partir do commit ${GITHUB_SHA::7}." \
-            --target "$GITHUB_SHA"
-            
+          gh release create latest BluetoothWidget.apk --title "Bluetooth Widget" --notes "APK mais recente" --target "$GITHUB_SHA"
+          
